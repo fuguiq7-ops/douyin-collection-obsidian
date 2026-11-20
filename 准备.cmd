@@ -4,6 +4,9 @@ setlocal
 set "PYTHONUTF8=1"
 cd /d "%~dp0"
 
+rem 优先用仓库自带的 node/npm，机器上没装 Node 也能跑
+if exist "%~dp0tools\node\node.exe" set "PATH=%~dp0tools\node;%PATH%"
+
 if exist "config\settings.yml" goto :settings_ok
 copy /y "config\settings.example.yml" "config\settings.yml" >nul
 echo [提示] 已生成 config\settings.yml（默认输出到 D:\Obsidian\抖音收藏），请按需修改。
@@ -11,7 +14,11 @@ echo [提示] 已生成 config\settings.yml（默认输出到 D:\Obsidian\抖音
 
 set "PYEXE=python"
 where python >nul 2>nul
-if not %errorlevel%==0 set "PYEXE=py -3"
+if errorlevel 1 (
+  where py >nul 2>nul
+  if errorlevel 1 goto :no_python
+  set "PYEXE=py -3"
+)
 
 rem 国内网络访问官方 PyPI 很慢；如已设置 PIP_INDEX_URL 则尊重你的设置
 if not defined PIP_INDEX_URL set "PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple"
@@ -36,6 +43,8 @@ echo [3b/4] 安装深挖依赖（yt-dlp / faster-whisper）...
 if errorlevel 1 echo [警告] 深挖依赖安装失败，可稍后重跑「准备.cmd」；同步功能不受影响。
 
 echo [4/4] 安装 Node 依赖 ...
+where npm >nul 2>nul
+if errorlevel 1 goto :no_node
 pushd fetcher
 call npm install
 if errorlevel 1 goto :fail_npm
@@ -49,6 +58,19 @@ exit /b 0
 popd
 :fail
 echo.
-echo [错误] 准备失败，请把上面的报错发给 Codex。
+echo [错误] 准备失败，请把上面的完整报错发给你求助的人（或在仓库提 issue）。
+pause
+exit /b 1
+
+:no_python
+echo.
+echo [错误] 没找到 Python。请先装 Python 3.12+（安装时勾选 Add python.exe to PATH），再重跑本脚本。
+pause
+exit /b 1
+
+:no_node
+echo.
+echo [错误] 没找到 npm。请先从 Releases 下载 node-tools.zip 解压到本目录的 tools\，
+echo        解压后应能看到 tools\node\node.exe，然后重跑本脚本。
 pause
 exit /b 1

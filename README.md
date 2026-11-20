@@ -56,29 +56,32 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
 
 ### 2）装工具本体（首次使用）
 
-```bat
-gh repo clone fuguiq7-ops/douyin-collection-obsidian
-cd douyin-collection-obsidian
-准备.cmd
-```
-
 依赖：Windows + 已安装的 Edge + Python 3.12+；NVIDIA 显卡可选（没有会自动回落 CPU + small 模型，能出稿但慢）。
 
-`node.exe`（83 MB）与 `ffmpeg.exe`（100.5 MB）不随仓库分发——后者超过 GitHub 单文件 100 MB 硬限，前者会让仓库臃肿。请到 **Releases** 下载 `node-tools.zip`、`ffmpeg-tools.zip`，解压就位：
+**第一步，拉仓库：**
 
-两个包都直接解压到仓库根下的 `tools\` 目录（包内已带层级，不用手动建子目录）：
+```bat
+git clone https://github.com/fuguiq7-ops/douyin-collection-obsidian.git
+cd douyin-collection-obsidian
+```
+
+装了 GitHub CLI 的话 `gh repo clone fuguiq7-ops/douyin-collection-obsidian` 等价。
+
+**第二步，补运行时（node + ffmpeg）**，这两样太大会让仓库臃肿（`ffmpeg.exe` 超过 GitHub 单文件 100 MB 硬限），所以放在 **Releases** 里。打开 <https://github.com/fuguiq7-ops/douyin-collection-obsidian/releases/latest>，下载 `node-tools.zip`、`ffmpeg-tools.zip`，两个包都直接解压到仓库根下的 `tools\` 目录（包内已带层级，不用手动建子目录）：
 
 - `node-tools.zip` 解压后得到 `tools\node\node.exe`、`npm.cmd`、`npx.cmd`、`node_modules\`
 - `ffmpeg-tools.zip` 解压后得到 `tools\ffmpeg\bin\ffmpeg.exe`
 
 自检通过再往下走：
 
+先自检这两条能出版本号：
+
 ```bat
 tools\node\node.exe --version
 tools\ffmpeg\bin\ffmpeg.exe -version
 ```
 
-`准备.cmd` 会自动建 venv、装 Python 依赖、`npm install`，并首次生成 `config\settings.yml`（默认输出到 `D:\Obsidian\抖音收藏`，按需修改 `vault_dir` / `media_dir`）。**它不负责下载上面两个 exe**，缺了会报找不到 node。
+**第三步，跑一次 `准备.cmd`：** 自动建 venv、装 Python 依赖、`npm install`，并首次生成 `config\settings.yml`（默认输出到 `D:\Obsidian\抖音收藏`，按需修改 `vault_dir` / `media_dir`）。它会自动优先用 `tools\node` 里的 node/npm，所以机器上没装 Node 也不影响；Python 3.12+ 需要你自己先装好。
 
 ### 3）登录 + 首次同步
 
