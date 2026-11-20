@@ -145,6 +145,7 @@ quicknote:
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   api_key: "sk-你的key"
   model: "qwen3.7-plus"
+  retries: 1
 ```
 
 3. 两个坑：模型名填 `qwen-plus` 不抵扣免费额度、会走按量计费（余额为 0 时报 `Arrearage` 直接拒）；免费额度只在**华北2（北京）**地域、每模型 100 万 token / 90 天；

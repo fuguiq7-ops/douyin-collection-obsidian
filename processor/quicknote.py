@@ -335,19 +335,33 @@ def main(argv=None):
             counts["done"] += 1
             continue
 
-        try:
-            limit = int(qn.get("max_input_chars") or 0)
-            # limit <= 0 表示不截断：整篇逐字稿原样送入
-            payload = transcript if limit <= 0 else transcript[:limit]
-            page = call_llm(qn, meta_text, payload)
-            err = validate(page)
-            if err:
-                raise ValueError(err)
-        except Exception as exc:  # noqa: BLE001 单条失败不中断整批，状态置失败下次重试
+        # 结构校验偶尔会被模型漏字段打回（实测长稿会偶发「表格缺表头」），
+        # 同一篇重试一次比等第二天定时任务重跑更省 token，也更省人工。
+        attempts = 1 + max(0, int(qn.get("retries", 1) or 0))
+        page = None
+        last_err = None
+        for attempt in range(1, attempts + 1):
+            try:
+                limit = int(qn.get("max_input_chars") or 0)
+                # limit <= 0 表示不截断：整篇逐字稿原样送入
+                payload = transcript if limit <= 0 else transcript[:limit]
+                candidate = call_llm(qn, meta_text, payload)
+                err = validate(candidate)
+                if err:
+                    raise ValueError(err)
+                page = candidate
+                break
+            except Exception as exc:  # noqa: BLE001 单条失败不中断整批
+                last_err = exc
+                if attempt < attempts:
+                    print(f"  ↻ 第 {attempt} 次未通过（{exc}），重试")
+
+        if page is None:
+            err = last_err if last_err is not None else RuntimeError("模型未返回可用结果")
             counts["failed"] += 1
             db.set_fields(con, row["aweme_id"], quick_state="提炼失败",
-                           quick_reason=str(exc)[:200])
-            print(f"  ✗ 失败：{label} — {exc}")
+                           quick_reason=str(err)[:200])
+            print(f"  ✗ 失败：{label} — {err}")
             continue
 
         if page.get("skip"):
