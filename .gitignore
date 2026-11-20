@@ -1,0 +1,22 @@
+# 运行环境（与机器绑定，不随仓库分发）
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+
+# 运行数据（含 data/edge-cookies.txt 登录态，务必排除）
+data/
+media/
+
+# 个人笔记库（默认不公开；想公开示例库再单独放 demo）
+vault/
+
+# 运行时二进制：node.exe 83MB、ffmpeg.exe 100.5MB
+# 后者超过 GitHub 单文件 100MB 硬限，推不上去；统一走 Release 附件
+tools/
+
+# 本地凭据（大模型 key、飞书 app_secret）
+config/settings.yml
+
+*.log
+.DS_Store

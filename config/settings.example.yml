@@ -1,0 +1,96 @@
+# 抖音收藏 → Obsidian 本地库 · 主配置（示例）
+# 首次运行「准备.cmd」会自动复制本文件为 config/settings.yml；请按需修改后使用。
+
+# Obsidian 库输出目录（vault 内的独立子目录）
+vault_dir: "D:\\Obsidian\\抖音收藏"
+
+# 深挖下载的原片/图集存放目录（不进 vault、不进 git）
+media_dir: "D:\\抖音收藏媒体"
+
+edge:
+  # 留空自动探测 Edge 安装位置
+  executable: ""
+  # 专用调试端口（与其它工具冲突时修改）
+  port: 9333
+  # 专用浏览器配置目录（登录态保存在这里，绝不入库）
+  profile_dir: "%LOCALAPPDATA%\\douyin-library\\edge-profile"
+
+capture:
+  # 每次翻页/滚动之间的随机等待区间（秒）
+  delay_min_sec: 2.0
+  delay_max_sec: 5.0
+  # 连续多少次滚动没有新数据就认为到底了
+  max_idle_scrolls: 5
+  # 单次抓取的滚动次数硬上限
+  max_scrolls: 400
+  page_load_timeout_sec: 60
+
+covers:
+  width: 480
+  max_bytes: 61440
+  format: webp
+
+deepdive:
+  # true = 保留原片（默认，防下架）；false = 转写成功后自动删片，只留逐字稿
+  keep_video: true
+
+lists:
+  # 备用桥接：仅当网页版「稍后再看」抓取失败时使用（在抖音 App 里建同名收藏夹，把想留的移进去）
+  watch_later_bridge_folder: "稍后再看·留存"
+
+sync:
+  # 是否同步「全部收藏」（未归入收藏夹的条目）；false = 不同步
+  include_favorites: true
+  # 是否同步「稍后再看」；false = 不同步
+  include_watch_later: true
+  # 收藏夹白名单：填收藏夹名称或 id，只同步这些收藏夹；留空数组 = 同步所有收藏夹
+  include_folders: []
+
+# 无内容过滤：标题去掉话题标签/@/标点后没有有效文字的条目，不入库、不建笔记
+content_filter:
+  enabled: true
+  # 清洗后至少保留的有效字符数（1 = 空标题/纯话题即过滤）
+  min_text_chars: 1
+
+# 分类来源：folder = 以收藏夹名作为分类（默认）；taxonomy = 按 taxonomy.yml 关键词规则分类
+category:
+  source: folder
+
+# 速查提炼（可选）：把已转写条目交大模型提炼成速查稿；未配置凭据时本模块自动跳过。
+quicknote:
+  # 总开关；false 或缺 base_url/api_key/model 时跳过，不影响本地同步与深挖
+  enabled: false
+  # OpenAI 兼容接口地址（如火山方舟 https://ark.cn-beijing.volces.com/api/v3）
+  base_url: ""
+  api_key: ""
+  model: ""
+  timeout_sec: 60
+  max_input_chars: 12000
+  min_body_chars: 300
+  max_body_chars: 1200
+
+# 飞书知识库同步（可选）：默认推送速查草稿（data/feishu_drafts）到指定知识库节点；
+# 旧「原始笔记」通道需显式 --raw。
+# 前提：在飞书开放平台创建自建应用，开通云文档/知识库/素材上传权限并发布，
+#       再把应用（机器人）加为目标知识库成员或文档协作者。留空凭据时本模块自动跳过。
+feishu:
+  # 总开关；false 或凭据缺失时，推送入口直接跳过，不影响本地同步与深挖
+  enabled: false
+  # 自建应用凭据（开放平台 → 应用 → 凭证与基础信息）
+  app_id: ""
+  app_secret: ""
+  # 目标知识库 space_id（知识库设置页地址栏数字部分，或调「获取知识空间列表」）
+  space_id: ""
+  # 父节点 node_token；留空 = 挂到知识库一级节点
+  parent_wiki_token: ""
+  # 是否把封面图一并上传为文档插图；false = 文档内不带封面（首版建议 false）
+  include_covers: false
+  # 应用对目标文档/节点没有权限时，是否自动发起权限申请（true = 申请，等管理员同意后移动）
+  apply_when_no_perm: false
+
+paths:
+  taxonomy: "config/taxonomy.yml"
+  db: "data/library.db"
+  raw: "data/raw"
+  logs: "data/logs"
+  spike: "data/spike"
