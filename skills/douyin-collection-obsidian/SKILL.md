@@ -19,7 +19,7 @@ metadata:
    Get-ChildItem $HOME -Recurse -Depth 4 -Filter '同步.cmd' -ErrorAction SilentlyContinue | Select-Object -First 5 -ExpandProperty FullName
    ```
 3. 仍找不到 → 询问用户是否有既有安装；没有则克隆并初始化：
-   `gh repo clone hitahara-66/douyin-collection-obsidian` → 进入该目录运行 `准备.cmd`。
+   `gh repo clone fuguiq7-ops/douyin-collection-obsidian` → 进入该目录运行 `准备.cmd`。
 
 开始操作前先读 `config\settings.yml`：`vault_dir` / `media_dir` 决定产物位置，向用户汇报时要用这里的真实路径。
 

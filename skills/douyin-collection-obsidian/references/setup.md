@@ -16,7 +16,7 @@
 1. 克隆仓库并进入根目录（根目录应有 `同步.cmd`、`fetcher\`、`processor\`）：
 
    ```bat
-   gh repo clone hitahara-66/douyin-collection-obsidian
+   gh repo clone fuguiq7-ops/douyin-collection-obsidian
    cd douyin-collection-obsidian
    ```
 

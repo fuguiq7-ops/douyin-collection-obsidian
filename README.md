@@ -46,7 +46,7 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
 
 对 Codex 说：
 
-> 从 GitHub 仓库 hitahara-66/douyin-collection-obsidian 安装 skills/douyin-collection-obsidian 技能
+> 从 GitHub 仓库 fuguiq7-ops/douyin-collection-obsidian 安装 skills/douyin-collection-obsidian 技能
 
 它会用 `skill-installer` 装到 `~/.codex/skills/douyin-collection-obsidian`，下一轮对话即可生效。
 也可以手动把 `skills/douyin-collection-obsidian` 整个文件夹复制到：
@@ -57,7 +57,7 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
 ### 2）装工具本体（首次使用）
 
 ```bat
-gh repo clone hitahara-66/douyin-collection-obsidian
+gh repo clone fuguiq7-ops/douyin-collection-obsidian
 cd douyin-collection-obsidian
 准备.cmd
 ```
@@ -66,8 +66,10 @@ cd douyin-collection-obsidian
 
 `node.exe`（83 MB）与 `ffmpeg.exe`（100.5 MB）不随仓库分发——后者超过 GitHub 单文件 100 MB 硬限，前者会让仓库臃肿。请到 **Releases** 下载 `node-tools.zip`、`ffmpeg-tools.zip`，解压就位：
 
-- `node-tools.zip` → `tools\node\`（至少要有 `node.exe`、`npm.cmd`、`npx.cmd`）
-- `ffmpeg-tools.zip` → `tools\ffmpeg\bin\`（只要 `ffmpeg.exe`）
+两个包都直接解压到仓库根下的 `tools\` 目录（包内已带层级，不用手动建子目录）：
+
+- `node-tools.zip` 解压后得到 `tools\node\node.exe`、`npm.cmd`、`npx.cmd`、`node_modules\`
+- `ffmpeg-tools.zip` 解压后得到 `tools\ffmpeg\bin\ffmpeg.exe`
 
 自检通过再往下走：
 
