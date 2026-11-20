@@ -350,6 +350,18 @@ def collect_quick_targets(con, cfg, only_id=None, force=False):
     return targets
 
 
+def update_doc_content(token, doc_token, md_text):
+    """整篇覆盖已推送文档的正文（保留原 node 链接，不新建文档）。"""
+    body = {
+        "command": "overwrite",
+        "format": "markdown",
+        "content": md_text,
+        "revision_id": -1,
+        "scene": "DoubaoCLI",
+    }
+    return _http("PUT", f"/open-apis/docs_ai/v1/documents/{doc_token}", token, json_body=body)
+
+
 def push_quick_one(con, cfg, row, dry_run=False, force=False):
     md_path = draft_path_for(cfg, row)
     md = md_path.read_text(encoding="utf-8")
@@ -360,6 +372,12 @@ def push_quick_one(con, cfg, row, dry_run=False, force=False):
         return "dry", f"待推送：{file_name}（{len(md)} 字符）"
 
     token = tenant_token(cfg)
+    # 已推过又要求强制推送：原地覆盖正文，保住 wiki 链接，不产生第二篇文档
+    if force and (row["feishu_doc_token"] or "").strip():
+        update_doc_content(token, row["feishu_doc_token"], md)
+        db.set_fields(con, row["aweme_id"], feishu_synced_at=common.now_iso())
+        return "updated", row["feishu_node_token"] or ""
+
     file_token = upload_markdown(token, md.encode("utf-8"), file_name)
     ticket = create_import_task(token, file_token, file_name)
     doc_token, _url = poll_import_task(token, ticket)
@@ -421,6 +439,8 @@ def main(argv=None):
             counts[status] = counts.get(status, 0) + 1
             if status == "pushed":
                 print(f"  ✓ 已推送：{label}（节点 {detail}）")
+            elif status == "updated":
+                print(f"  ↻ 已原地更新：{label}（节点 {detail}）")
             elif status == "dry":
                 print(f"  · {detail}")
             else:
@@ -434,7 +454,7 @@ def main(argv=None):
 
     con.close()
     print("")
-    print(f"【飞书同步】成功 {counts['pushed']} · 预演 {counts['dry']} · 跳过 {counts['skip']} · 失败 {counts['failed']}")
+    print(f"【飞书同步】新增 {counts['pushed']} · 更新 {counts.get('updated', 0)} · 预演 {counts['dry']} · 跳过 {counts['skip']} · 失败 {counts['failed']}")
     return 1 if counts["failed"] and not args.dry_run else 0
 
 

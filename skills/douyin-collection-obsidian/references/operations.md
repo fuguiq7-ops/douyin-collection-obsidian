@@ -133,7 +133,7 @@ categories:
 | 已跳过 | 模型或长度判定无可提炼方法论，`quick_reason` 记原因 |
 | 提炼失败 | 调用 / 校验失败，下次定时任务重试 |
 
-飞书映射：`feishu_doc_token / feishu_node_token` 非空即已推送，增量跳过；`--force` 可重推。
+飞书映射：`feishu_doc_token / feishu_node_token` 非空即已推送，增量跳过；`--force` 对已推送条目**原地覆盖正文**（调 `docs_ai` 的 overwrite，节点与 wiki 链接不变，不产生第二篇文档）。
 
 ## 笔记契约
 

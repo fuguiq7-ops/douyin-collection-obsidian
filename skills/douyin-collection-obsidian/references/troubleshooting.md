@@ -35,7 +35,7 @@
 | 某条被记「已跳过」 | 属正常判定：观点情绪 / 个人回忆 / 个案连麦 / 过短无可提炼方法论；原因见 `quick_reason`，不会重试 |
 | 推送入口打印「未启用 / 配置不完整」 | 检查 `feishu.enabled` 与 `app_id / app_secret / space_id`；未就绪时跳过，不报错 |
 | 推送返回权限申请 / 无权限 | 把自建应用加为目标知识库成员或文档协作者；`apply_when_no_perm` 仅控制是否发起申请，审批通过后才能挂载 |
-| 文档已存在又重复推送 | 已推送条目按 `feishu_doc_token / feishu_node_token` 增量跳过；确需重推用 `推送速查.cmd --force`，注意会生成新文档节点 |
+| 文档已存在又重复推送 | 已推送条目按 `feishu_doc_token / feishu_node_token` 增量跳过；确需推新版用 `推送速查.cmd --force`，会对同一条目**原地覆盖正文**（节点与 wiki 链接不变，不会多出一篇） |
 | 定时链路没跑 | 看 `data\logs\quicknote.log` / `feishu.log`；计划任务为登录后才运行（Interactive），关机错过会在开机后补跑（StartWhenAvailable） |
 
 ## 库 / 文件相关

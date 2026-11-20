@@ -212,7 +212,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-ob
 | Edge 登录态检查 | `.\.venv\Scripts\python.exe -m processor.sync --status` |
 | 深挖标星条目 | `深挖.cmd`（`--id <aweme_id>` 单条、`--refresh` 强制重跑） |
 | 提炼速查稿（大模型） | `提炼.cmd`（`--id` 单条、`--dry-run` 只列待处理） |
-| 推送速查稿到飞书 | `推送速查.cmd`（默认 `--quick`；`--id` / `--force` / `--dry-run`） |
+| 推送速查稿到飞书 | `推送速查.cmd`（默认 `--quick`；`--id` 单条 / `--force` 已推过的原地覆盖正文（链接不变）/ `--dry-run`） |
 | 跑完整链路 | `定时全链路.cmd` |
 | 重整条目文件名（按发布日期排序） | `.\.venv\Scripts\python.exe -m processor.reorder`（预览；确认后加 `--apply`） |
 | 导出分类样本（给 Codex 聚类） | `.\.venv\Scripts\python.exe -m processor.run --export-samples` |

@@ -42,7 +42,7 @@ metadata:
 | Edge 登录态检查 | `.\.venv\Scripts\python.exe -m processor.sync --status` |
 | 深挖（下载 + 转写标星条目） | `深挖.cmd`（单条 `--id <aweme_id>`；强制重跑 `--refresh`） |
 | 速查提炼（已转写 → 大模型速查稿 + 草稿） | `提炼.cmd`（单条 `--id <aweme_id>`；只列待处理 `--dry-run`）；未配置 LLM 凭据时自动跳过 |
-| 推送速查草稿到飞书知识库 | `推送速查.cmd`（`--quick` 默认通道；`--id <aweme_id>` / `--force` / `--dry-run`）；旧原始笔记通道为 `同步飞书.cmd --raw` |
+| 推送速查草稿到飞书知识库 | `推送速查.cmd`（`--quick` 默认通道；`--id <aweme_id>` / `--force`（已推过的原地覆盖正文，节点链接不变）/ `--dry-run`）；旧原始笔记通道为 `同步飞书.cmd --raw` |
 | 注册计划任务（sync / deepdive / quicknote / feishu） | `powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1" -Kind sync -Daily -At 04:00`；`-Remove` 移除 |
 | 导出分类样本 | `.\.venv\Scripts\python.exe -m processor.run --export-samples` |
 | 重整条目文件名（按发布日期对齐） | `.\.venv\Scripts\python.exe -m processor.reorder`（预览；确认后加 `--apply`） |
