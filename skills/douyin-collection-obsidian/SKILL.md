@@ -18,15 +18,14 @@ metadata:
    ```powershell
    Get-ChildItem $HOME -Recurse -Depth 4 -Filter '同步.cmd' -ErrorAction SilentlyContinue | Select-Object -First 5 -ExpandProperty FullName
    ```
-3. 仍找不到 → 询问用户是否有既有安装；没有则克隆并初始化：
-   `gh repo clone fuguiq7-ops/douyin-collection-obsidian` → 进入该目录运行 `准备.cmd`。
+3. 仍找不到 → 询问用户是否有既有安装；没有则**按 `references/deploy-guide.md` 从第 0 步问诊开始带他装**：`git clone https://github.com/fuguiq7-ops/douyin-collection-obsidian.git` → 补运行时 → `准备.cmd`。新手部署不要跳步、不要一次抛完所有步骤。
 
 开始操作前先读 `config\settings.yml`：`vault_dir` / `media_dir` 决定产物位置，向用户汇报时要用这里的真实路径。
 
 ## 环境要求
 
 - Windows + Edge（唯一浏览器依赖；工具用独立配置目录，不干扰用户日常浏览器）
-- Python 3.12+、Node 20+、ffmpeg（在 PATH 中）
+- Python 3.12+（需在 PATH）；Node 与 ffmpeg **不要求系统安装**，用仓库自带的 `tools\node` 与 `tools\ffmpeg\bin`（Releases 提供），`准备.cmd` 会自动把 `tools\node` 加进 PATH
 - 深挖转写（可选）：NVIDIA 显卡。约 6GB 显存可跑 large-v3（int8），更小自动降级 medium / CPU；模型约 3GB，缓存于 `%USERPROFILE%\.cache\huggingface`（保留，重建成本高）
 
 ## 常用操作（在工具根目录执行）
@@ -62,6 +61,7 @@ metadata:
 
 ## 参考文档
 
+- **新手部署（按 §0 问诊一步步带到跑通）**：[references/deploy-guide.md](references/deploy-guide.md)
 - 安装、配置、登录、验证：[references/setup.md](references/setup.md)
 - 日常操作、分类体系、深挖与摘要、状态语义：[references/operations.md](references/operations.md)
 - 故障排查（未登录 / 403 / cublas / 显存 / 镜像）：[references/troubleshooting.md](references/troubleshooting.md)
