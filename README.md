@@ -91,6 +91,93 @@ tools\ffmpeg\bin\ffmpeg.exe -version
 同步.cmd --spike     :: 可选：页面结构探测，报告在 data\spike\M0-report.md
 ```
 
+### 4）首次部署检查清单
+
+按顺序核对，每步都给了能直接跑的验证命令。前 5 组做完就能日常用；后 3 组是可选的。
+
+**① 环境**
+
+- Windows 10/11，已装 Edge（登录态依赖它）
+- Python 3.12+ → `python --version`
+- 磁盘预留 6 GB 左右（`.venv` 约 2.3 GB、依赖与原片另计）
+
+**② 仓库与运行时**
+
+```bat
+tools\node\node.exe --version
+tools\ffmpeg\bin\ffmpeg.exe -version
+```
+
+两条都出版本号，才算两个 Releases 包放对了位置。
+
+**③ 依赖安装**
+
+```bat
+准备.cmd
+```
+
+最后要打印「准备完成」。中途报错按提示走：缺 npm 说明 `tools\node` 没解压，缺 Python 说明环境变量没生效。
+
+**④ 配置**（改 `config\settings.yml`）
+
+- `vault_dir`：Obsidian 库输出目录，**必须是已存在且有写权限的路径**；不存在会报「库目录不存在」
+- `media_dir`：原片／图集存放目录，别放进 vault，也别放进仓库
+- `sync.include_folders`：留空 `[]` = 同步全部收藏夹；填收藏夹名或 id = 白名单
+
+**⑤ 登录 + 首轮同步**
+
+```bat
+登录抖音.cmd
+同步.cmd
+.\.venv\Scripts\python.exe -m processor.selfcheck
+```
+
+`同步.cmd` 退出码 0、vault 里出现笔记与索引，才算通了。想更彻底地验证采集端：`cd fetcher` 后 `node test-capture.mjs`。
+
+**⑥ 可选：大模型提炼**
+
+1. 到[百炼控制台](https://bailian.console.aliyun.com/)右上角「API-KEY」建一个 Key（`sk-` 开头那一串，只显示一次）；
+2. 填进 `quicknote`：
+
+```yaml
+quicknote:
+  enabled: true
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key: "sk-你的key"
+  model: "qwen3.7-plus"
+```
+
+3. 两个坑：模型名填 `qwen-plus` 不抵扣免费额度、会走按量计费（余额为 0 时报 `Arrearage` 直接拒）；免费额度只在**华北2（北京）**地域、每模型 100 万 token / 90 天；
+4. 先 `提炼.cmd --dry-run` 看队列，再 `提炼.cmd --id <aweme_id>` 试一条。没配 `quicknote` 时这一步打印跳过并返回 0，不影响其它步骤。
+
+**⑦ 可选：飞书推送**
+
+1. [开放平台](https://open.feishu.cn/app) → 创建企业自建应用 → 「凭证与基础信息」取 `app_id` / `app_secret`；
+2. 开权限 `wiki:wiki`、`drive:drive`、`docx:document`，把这串换成你的 app_id 一次开通：
+
+   `https://open.feishu.cn/app/<app_id>/auth?q=wiki:wiki,drive:drive,docx:document&op_from=openapi&token_type=tenant`
+
+3. 「版本管理与发布」建版本并发布，否则接口一直报无权限；
+4. 打开目标知识库页面 → 右上「⋯」→「更多」→「添加文档应用」→ 选你的应用。**走「成员设置」加人不算数**；
+5. `space_id`（知识库地址栏数字）与 `parent_wiki_token`（父节点，可留空挂一级）填进 `feishu`；
+6. 先 `推送速查.cmd --dry-run`，再 `推送速查.cmd --id <aweme_id> --force` 试一条真推；
+7. `apply_when_no_perm: true` 的自助申请会被错误码 `131006` 拒，保持 `false` 手动授权更省事。
+
+**⑧ 可选：无人值守**
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-chain-task.ps1" -ToolRoot "<本仓库路径>" -At 04:00
+```
+
+注册后核对：
+
+```powershell
+Get-ScheduledTask -TaskName 'DouyinToObsidian-Chain'
+Get-ScheduledTaskInfo -TaskName 'DouyinToObsidian-Chain'
+```
+
+`LastTaskResult` 为 `0` 即上次跑通。首次建议手动双击 `定时全链路.cmd` 跑一遍再交给计划任务。
+
 ## 使用（每周约 10 分钟）
 
 1. 双击 `同步.cmd`（自动抓收藏 + 稍后再看，更新队列状态）；

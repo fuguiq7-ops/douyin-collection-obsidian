@@ -64,10 +64,13 @@ quicknote:
   base_url: ""
   api_key: ""
   model: ""
-  timeout_sec: 60
-  max_input_chars: 12000
-  min_body_chars: 300
-  max_body_chars: 1200
+  # 单次调用超时（秒）
+  timeout_sec: 120
+  # 逐字稿送入模型的最大字符数；0 = 不截断，整篇都送
+  max_input_chars: 0
+  # 输出篇幅校验；两者都为 0 = 不设上下限，按内容实际需要写，不灌水
+  min_body_chars: 0
+  max_body_chars: 0
 
 # 飞书知识库同步（可选）：默认推送速查草稿（data/feishu_drafts）到指定知识库节点；
 # 旧「原始笔记」通道需显式 --raw。
