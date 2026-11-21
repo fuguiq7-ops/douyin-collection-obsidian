@@ -42,6 +42,22 @@
 | 文档已存在又重复推送 | 已推送条目按 `feishu_doc_token / feishu_node_token` 增量跳过；确需推新版用 `推送速查.cmd --force`，会对同一条目**原地覆盖正文**（节点与 wiki 链接不变，不会多出一篇） |
 | 定时链路没跑 | 看 `data\logs\quicknote.log` / `feishu.log`；计划任务为登录后才运行（Interactive），关机错过会在开机后补跑（StartWhenAvailable） |
 
+## 换盘 / 搬迁工具目录
+
+整个工具目录搬到别的盘（比如 C → E）后要改四处，缺一处就会出问题：
+
+1. `config\settings.yml` 的 `vault_dir`、`media_dir` 必须是新的绝对路径；
+2. `.venv` 不能直接搬（`pyvenv.cfg` 和 `Scripts` 里记着旧路径），删掉后在新位置重跑 `准备.cmd` 重建；
+3. `data\library.db` 里 `items.note_path / cover_path / transcript_path`、`runs.raw_dir` 存的是绝对路径，要一次性替换前缀，否则同步会把笔记当新文件重写、封面全部失效。改写示例：
+
+   ```powershell
+   .\.venv\Scripts\python.exe -c 'import sqlite3; c=sqlite3.connect(r"data\library.db"); [c.execute(f"update {t} set {col}=replace({col}, ?, ?)", (OLD, NEW)) for t,col in [("items","note_path"),("items","cover_path"),("items","transcript_path"),("runs","raw_dir")]]; c.commit()'
+   ```
+
+4. 计划任务要重新注册：`register-chain-task.ps1 -ToolRoot <新路径> -At 05:00`（Action 里存的是旧绝对路径）。
+
+搬完的验证顺序：随机抽查 `note_path` / `cover_path` 文件是否存在 → `同步.cmd --skip-fetch` 应「全部未变、写入 0」→ `深挖.cmd` 应无待处理 → `提炼.cmd --dry-run`、`推送速查.cmd --dry-run` 空队列。
+
 ## 库 / 文件相关
 
 | 症状 | 处理 |
