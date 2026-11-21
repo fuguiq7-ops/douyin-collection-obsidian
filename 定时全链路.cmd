@@ -11,6 +11,12 @@ set "LOG=data\logs\chain.log"
 set "FAIL="
 if not exist "data\logs" mkdir "data\logs"
 
+rem ---------- 日志轮转：超过 2MB 就归档成 chain.log.1，避免越滚越大 ----------
+if exist "%LOG%" for %%A in ("%LOG%") do if %%~zA GTR 2097152 (
+    if exist "%LOG%.1" del /q "%LOG%.1"
+    move /y "%LOG%" "%LOG%.1" >nul
+)
+
 >>"%LOG%" echo.
 >>"%LOG%" echo ===== %date% %time% 全链路开始 =====
 

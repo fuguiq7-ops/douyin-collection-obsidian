@@ -399,7 +399,10 @@ def main(argv=None):
     done = 0
     for row in targets:
         item = runmod.row_to_item(row)
-        label = f"{item['title'] or item['aweme_id']}（{item['aweme_id']}）"
+        # 抖音「图文长文」作品把整篇正文塞在标题/desc 里，原样打印会让 chain.log 瞬间膨胀
+        raw_title = (item["title"] or "").replace("\n", " ").strip()
+        short = raw_title[:40] + ("…" if len(raw_title) > 40 else "")
+        label = f"{short or item['aweme_id']}（{item['aweme_id']}）"
         print(f"\n→ {label}")
         state = row["deep_state"] or ""
         if item["kind"] == "images":

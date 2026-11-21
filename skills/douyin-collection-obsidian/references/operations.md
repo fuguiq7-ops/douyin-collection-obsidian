@@ -21,6 +21,8 @@
 | ③ | `DouyinToObsidian-Quicknote` | `定时提炼.cmd` | 每日 05:00 | `data\logs\quicknote.log` | 已转写条目提炼速查稿 + 推送草稿 |
 | ④ | `DouyinToObsidian-Feishu` | `定时推送.cmd` | 每日 05:30 | `data\logs\feishu.log` | 把速查草稿推送到飞书知识库 |
 
+也可以只注册一个任务 `DouyinToObsidian-Chain` 跑 `定时全链路.cmd`：四步顺序执行，同步失败即中止，其余步骤失败只记 FAIL 不阻塞。这条链路的日志统一进 `data\logs\chain.log`，**超过 2MB 会自动归档为 `chain.log.1`**（只保留一份历史），不会无限膨胀。
+
 注册命令（`-Kind` 取 `sync / deepdive / quicknote / feishu`）：
 
 ```powershell
