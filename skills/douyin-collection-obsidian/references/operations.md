@@ -90,13 +90,17 @@ categories:
 深挖.cmd --refresh       :: 已转写的也重新处理
 ```
 
-流程：读回标星 → 下载原片（优先用最近抓取的签名直链；失效时用已登录 Edge 打开视频页刷新直链）→ ffmpeg 抽音频 → faster-whisper 转写（优先 `large-v3/cuda`，显存不足自动降级 `medium/cuda` → `medium/cpu`）→ 逐字稿写入 `data\transcripts\<id8>.md` 并回填到笔记的「逐字稿」折叠区块 → `deep_state` 更新为 `已转写`。
+流程：读回标星 → 下载原片（优先用最近抓取的签名直链；失效时用已登录 Edge 打开视频页刷新直链）→ **校验下载结果含视频流**（只有音频轨就换下一个地址，全都不行才退化成音频转写）→ ffmpeg 抽音频 → faster-whisper 转写（优先 `large-v3/cuda`，显存不足自动降级 `medium/cuda` → `medium/cpu`）→ 逐字稿写入 `data\transcripts\<id8>.md` 并回填到笔记的「逐字稿」折叠区块 → `deep_state` 更新为 `已转写`。
 
 要点：
 
+- 终态有三种：`已转写`、`已存图`、`无语音内容`，都是处理到底，之后每轮自动跳过（要重做加 `--refresh`）；只有 `已下载`（转写报错）会每轮重试；
+- 判定「无语音」做了两道：先放宽 VAD（`threshold=0.2`、`min_silence_duration_ms=600`）跑一遍，仍为空就**关闭 VAD** 再跑一遍；再要求结果同时满足「总字数 ≥ 40」和「中文字符占比 ≥ 55%」——纯 BGM 会让 whisper 硬凑曲名或中英歌词（如 `Body set the clock`），这类结果会被挡掉，不写逐字稿；
+- 真有口播但被 VAD 吞掉的（唱歌式讲述、轻声、远景），现在能被第二遍捞回来；想看更激进的召回可以调小 `WHISPER_VAD_THRESHOLD`（默认 0.2），换模型用 `WHISPER_MODEL`；
 - `deepdive.keep_video: false` 时，转写成功后自动删除临时原片，只留逐字稿；
 - 首次运行会下载模型（约 3GB，默认走 hf-mirror），之后离线可用；模型缓存在 `%USERPROFILE%\.cache\huggingface`，不要清理；
-- 转写速度参考：RTX 4050 上约为实时的 6–7 倍（16 分钟视频约 3 分钟）；
+- 转写速度参考：RTX 4050 上约为实时的 6–7 倍（16 分钟视频约 3 分钟）；纯 CPU + `small` 约为实时的 1–1.5 倍；
+- 拿到只有音频轨的条目（部分作品只发音频），会对音频转写并在日志里标注「拿不到画面」；
 - `data\待摘要清单.md` 会列出已转写条目——让 Codex 读 `data\transcripts\*.md` 生成摘要，写入对应笔记的手动区即可（脚本不会覆盖手动区）。
 
 ## 速查提炼（③）与飞书推送（④）

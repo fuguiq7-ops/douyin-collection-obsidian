@@ -71,7 +71,7 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
 | `category / category_override` | 分类及其用户覆盖 |
 | `tags / tags_override` | 自动标签（来自话题 hashtag）及其用户覆盖 |
 | `starred / starred_override` | 深挖标星及其用户覆盖 |
-| `deep_state / transcript_path` | 深挖进度（已转写 / 已下载 / 已存图）与逐字稿路径 |
+| `deep_state / transcript_path` | 深挖进度与逐字稿路径。`已转写 / 已存图 / 无语音内容` 为终态（每轮跳过，`--refresh` 才重做），`已下载` 表示转写报错、会重试 |
 | `quick_state / quick_at / quick_reason` | 提炼进度（已提炼 / 已跳过 / 提炼失败）、提炼时间、跳过或失败原因 |
 | `feishu_doc_token / feishu_node_token / feishu_synced_at` | 飞书文档 / 知识库节点映射与推送时间；非空即已推送，增量跳过 |
 | `note_path / last_auto` | 笔记路径；上次写入的自动字段快照（用于读回用户编辑） |

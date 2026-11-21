@@ -56,6 +56,9 @@ MEDIA_HEADERS = {
     "Referer": "https://www.douyin.com/",
 }
 
+# 已经处理到底的状态：默认跳过，不再每轮重复下载+加载模型
+DONE_STATES = ("已转写", "已存图", "无语音内容")
+
 
 def _extract_urls(rec):
     video = rec.get("video") or {}
@@ -135,14 +138,46 @@ def download_file(url, dest, label="文件"):
     return dest
 
 
+def probe_streams(path):
+    """用 ffmpeg 读流信息，返回 {'video': bool, 'audio': bool, 'duration': float}。
+
+    有的播放地址只给音频轨道（拿到的是 BGM/音频直链），不校验就会把纯音频当成原片，
+    后面必然转写不出内容。这里用它做一道闸。
+    """
+    info = {"video": False, "audio": False, "duration": 0.0}
+    ffmpeg = resolve_ffmpeg()
+    if not ffmpeg:
+        return info
+    proc = subprocess.run(
+        [ffmpeg, "-hide_banner", "-i", str(path)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    text = (proc.stderr or "") + (proc.stdout or "")
+    info["video"] = bool(re.search(r"Stream #\S+.*: Video:", text))
+    info["audio"] = bool(re.search(r"Stream #\S+.*: Audio:", text))
+    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", text)
+    if m:
+        info["duration"] = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
+    return info
+
+
 def download_video(item, cfg):
     media = Path(cfg["media_dir"])
     media.mkdir(parents=True, exist_ok=True)
     base = f"{common.id8(item['aweme_id'])}_{common.sanitize_filename(item.get('title') or 'video', 40)}"
     dest = media / f"{base}.mp4"
     if dest.exists() and dest.stat().st_size > 0:
-        return dest, None
+        cached = probe_streams(dest)
+        if cached["video"]:
+            return dest, None
+        # 缓存里是纯音频（早前版本抓错轨道），删掉重下
+        print(f"  ⚠ 已有缓存只有音频轨（无画面），重新下载")
+        dest.unlink(missing_ok=True)
     last_err = ""
+    audio_fallback = media / f"{base}.audio.mp4"
     for round_no in (1, 2):
         urls = media_urls_from_raw(cfg, item["aweme_id"]) if round_no == 1 else refresh_media_urls(cfg, item["aweme_id"])
         candidates = (urls or {}).get("videos") or []
@@ -153,11 +188,24 @@ def download_video(item, cfg):
             try:
                 print(f"  · 下载直链（{round_no == 1 and '原始数据' or '刷新'}）: {url[:80]}...")
                 download_file(url, dest, label="下载")
+                streams = probe_streams(dest)
+                if not streams["video"]:
+                    print(f"  ⚠ 这个地址只有音频轨（{streams['duration']:.0f}s），先留作音频兜底，换下一个")
+                    last_err = "直链只有音频轨道"
+                    if not audio_fallback.exists():
+                        dest.replace(audio_fallback)
+                    else:
+                        dest.unlink(missing_ok=True)
+                    continue
                 return dest, None
             except Exception as exc:  # noqa: BLE001
                 last_err = str(exc)
                 dest.unlink(missing_ok=True)
                 continue
+    # 所有地址都只有音频轨时，退一步用音频转写（口播类音频贴也能出逐字稿）
+    if audio_fallback and audio_fallback.exists():
+        print(f"  ⚠ 该条拿不到画面，只有音频轨，直接对音频转写")
+        return audio_fallback, None
     return None, f"下载失败: {last_err}"
 
 
@@ -210,6 +258,51 @@ def download_images(item, cfg):
     return None, "图片下载失败"
 
 
+def _cjk_count(text):
+    return len(re.findall(r"[\u4e00-\u9fff]", text or ""))
+
+
+def _looks_like_speech(text, min_chars=40, min_cjk_ratio=0.55):
+    """判定转写结果是不是「真的有人讲中文」。
+
+    纯背景音乐 whisper 也会硬凑内容：要么极短（"Body set the clock" 这种曲名碎片），
+    要么把中英歌词混着听出来（中文占比不到三成）。实测 61 篇真实口播逐字稿的中文占比
+    都在 0.72 以上，所以用「够长 + 中文占比达标」两条卡住 BGM 幻觉。
+    """
+    plain = re.sub(r"\s+", "", _strip_ts(text))
+    if not common.clean_content_text(plain) or len(plain) < min_chars:
+        return False
+    return _cjk_count(plain) / len(plain) >= min_cjk_ratio
+
+
+def _run_whisper(model, audio, vad, vad_threshold):
+    """跑一遍转写，返回 (文本, 片段数)。"""
+    kwargs = {
+        "language": "zh",
+        "beam_size": 1,
+        "condition_on_previous_text": False,
+        "vad_filter": vad,
+    }
+    if vad:
+        # 默认 VAD（threshold 0.5）会把唱歌、轻声、远景对白整段判成静音，
+        # 这里放宽阈值并缩短最短静音判定，避免真有人声却识别为空
+        kwargs["vad_parameters"] = dict(
+            threshold=vad_threshold,
+            min_silence_duration_ms=600,
+            speech_pad_ms=300,
+        )
+    segments, _info = model.transcribe(str(audio), **kwargs)
+    lines = []
+    count = 0
+    for seg in segments:
+        count += 1
+        ts = f"[{int(seg.start) // 60:02d}:{int(seg.start) % 60:02d}]"
+        lines.append(f"{ts} {seg.text.strip()}")
+        if count % 100 == 0:
+            print(f"    … 已转写到 {int(seg.start) // 60} 分钟")
+    return "\n".join(lines), count
+
+
 def transcribe(video_path):
     try:
         from faster_whisper import WhisperModel
@@ -231,6 +324,11 @@ def transcribe(video_path):
     model_pref = (os.environ.get("WHISPER_MODEL") or "").strip()
     # CPU 下默认 small（速度/精度平衡）；可用 WHISPER_MODEL 覆盖为 base/medium 等
     cpu_model = model_pref or "small"
+    vad_threshold = 0.2
+    try:
+        vad_threshold = float(os.environ.get("WHISPER_VAD_THRESHOLD") or 0.2)
+    except ValueError:
+        pass
     attempts = []
     if cuda_available():
         gpu_model = model_pref or "large-v3"
@@ -247,29 +345,25 @@ def transcribe(video_path):
         try:
             print(f"  · 加载模型 {model_name}/{device}（首次会自动下载，1.5–3GB）...")
             model = WhisperModel(model_name, device=device, compute_type=compute)
-            segments, _info = model.transcribe(
-                str(audio),
-                language="zh",
-                vad_filter=True,
-                beam_size=1,
-                condition_on_previous_text=False,
-            )
-            lines = []
-            count = 0
-            for seg in segments:
-                count += 1
-                ts = f"[{int(seg.start) // 60:02d}:{int(seg.start) % 60:02d}]"
-                lines.append(f"{ts} {seg.text.strip()}")
-                if count % 100 == 0:
-                    print(f"    … 已转写到 {int(seg.start) // 60} 分钟")
+            # 第一遍：放宽 VAD
+            text, segs = _run_whisper(model, audio, True, vad_threshold)
+            if not _looks_like_speech(text):
+                # 第二遍：完全关闭 VAD 兜底（唱歌 / 轻声 / 背景噪声大时 VAD 会整段滤掉）
+                print("  · 放宽 VAD 后仍无有效中文口播，关闭 VAD 再试一遍")
+                text2, segs2 = _run_whisper(model, audio, False, vad_threshold)
+                text = text2 if _looks_like_speech(text2) else ""
             try:
                 audio.unlink()
             except OSError:
                 pass
-            return "\n".join(lines), None
+            return text, None
         except Exception as exc:  # noqa: BLE001
             last_err = f"{model_name}/{device}: {exc}"
     return None, f"转写失败（{last_err}）"
+
+
+def _strip_ts(text):
+    return "\n".join(re.sub(r"^\[\d{2}:\d{2}\]\s*", "", ln).strip() for ln in (text or "").splitlines())
 
 
 def main(argv=None):
@@ -291,7 +385,7 @@ def main(argv=None):
             continue
         if not args.id and not (starred or liked):
             continue
-        if not args.refresh and not args.id and row["deep_state"] == "已转写":
+        if not args.refresh and not args.id and row["deep_state"] in DONE_STATES:
             continue
         targets.append(row)
 
@@ -325,12 +419,15 @@ def main(argv=None):
                 print(f"  ⚠ 转写失败: {terr}")
                 state = "已下载"
             else:
-                plain = "\n".join(
-                    re.sub(r"^\[\d{2}:\d{2}\]\s*", "", ln).strip() for ln in text.splitlines()
-                )
+                plain = _strip_ts(text)
                 if not common.clean_content_text(plain):
                     state = "无语音内容"
-                    print("  · 未识别到有效语音（静音或纯背景音乐），不生成逐字稿")
+                    print("  · 未识别到有效语音（已放宽 VAD 并关闭 VAD 复测，判定为纯背景音乐）")
+                    # 之前版本可能留下过幻觉逐字稿，一并清掉，免得被提炼成空话速查稿
+                    old_tp = row["transcript_path"] if "transcript_path" in row.keys() else ""
+                    if old_tp:
+                        Path(old_tp).unlink(missing_ok=True)
+                        db.set_fields(con, item["aweme_id"], transcript_path="")
                 else:
                     tpath = transcripts_dir / f"{common.id8(item['aweme_id'])}.md"
                     tpath.write_text(text, encoding="utf-8", newline="\n")
