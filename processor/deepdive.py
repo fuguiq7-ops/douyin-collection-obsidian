@@ -19,6 +19,8 @@ from . import run as runmod
 # 国内网络访问 HuggingFace 官方源较慢，默认走镜像；设置 HF_ENDPOINT 可覆盖
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+# 模型缓存跟项目走（默认在 C 盘用户目录会占几 GB）；可用 HF_HOME 覆盖
+os.environ.setdefault("HF_HOME", str(common.REPO_ROOT / "hf-cache"))
 
 
 def _register_cuda_dlls():

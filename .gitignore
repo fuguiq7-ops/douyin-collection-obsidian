@@ -7,6 +7,7 @@ node_modules/
 # 运行数据（含 data/edge-cookies.txt 登录态，务必排除）
 data/
 media/
+hf-cache/
 
 # 个人笔记库（默认不公开；想公开示例库再单独放 demo）
 vault/

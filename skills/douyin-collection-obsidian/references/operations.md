@@ -100,7 +100,7 @@ categories:
 - 判定「无语音」做了两道：先放宽 VAD（`threshold=0.2`、`min_silence_duration_ms=600`）跑一遍，仍为空就**关闭 VAD** 再跑一遍；再要求结果同时满足「总字数 ≥ 40」和「中文字符占比 ≥ 55%」——纯 BGM 会让 whisper 硬凑曲名或中英歌词（如 `Body set the clock`），这类结果会被挡掉，不写逐字稿；
 - 真有口播但被 VAD 吞掉的（唱歌式讲述、轻声、远景），现在能被第二遍捞回来；想看更激进的召回可以调小 `WHISPER_VAD_THRESHOLD`（默认 0.2），换模型用 `WHISPER_MODEL`；
 - `deepdive.keep_video: false` 时，转写成功后自动删除临时原片，只留逐字稿；
-- 首次运行会下载模型（约 3GB，默认走 hf-mirror），之后离线可用；模型缓存在 `%USERPROFILE%\.cache\huggingface`，不要清理；
+- 模型缓存在项目内 `hf-cache\hub`（默认跟项目走，不再占 C 盘用户目录；可用环境变量 `HF_HOME` 覆盖）；首次运行会下载模型（约 3GB，默认走 hf-mirror），之后离线可用；
 - 转写速度参考：RTX 4050 上约为实时的 6–7 倍（16 分钟视频约 3 分钟）；纯 CPU + `small` 约为实时的 1–1.5 倍；
 - 拿到只有音频轨的条目（部分作品只发音频），会对音频转写并在日志里标注「拿不到画面」；
 - `data\待摘要清单.md` 会列出已转写条目——让 Codex 读 `data\transcripts\*.md` 生成摘要，写入对应笔记的手动区即可（脚本不会覆盖手动区）。
