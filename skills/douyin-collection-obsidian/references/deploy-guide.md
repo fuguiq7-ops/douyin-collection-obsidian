@@ -138,6 +138,6 @@ Get-ScheduledTaskInfo -TaskName 'DouyinToObsidian-Chain'
 | 飞书 `3380004` | 当前用户对文档无权限（应用导入的文档常如此） |
 | 飞书 `1063002` | 应用对文档无 manage 权，无法自行加协作者 |
 | `{"code":"Arrearage"}` | 百炼欠费停服，结清后再调 |
-| `第 N 节表格缺表头` | 模型偶发漏字段，`quicknote.retries: 1` 会自动重试一次 |
+| `第 N 节表格缺表头` | 模型偶发漏字段；归一化会先按列数补占位表头，`quicknote.retries: 1` 再自动重试一次，仍不过才记失败 |
 | `.cmd` 报「无法识别 xxx」 | 脚本被存成 LF / 无 BOM；Windows 批处理要 CRLF，PowerShell 脚本要 UTF-8 BOM |
 | 提示相关权限申请被拒 | `apply_when_no_perm` 保持 `false`，改手动授权 |

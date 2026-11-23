@@ -116,7 +116,7 @@ categories:
 同步飞书.cmd             :: 旧通道：推送原始笔记（显式 --raw）
 ```
 
-提炼链路（`processor\quicknote.py`）：选 `deep_state=已转写`、`quick_state` 非已提炼/已跳过、且尚无速查稿的条目 → 读逐字稿去时间戳 → 调 OpenAI 兼容接口按锁定规范输出结构化 JSON → 校验（小节 1–5、上手顺序 3–5、表格行列对齐）→ 通过则落 `vault\已深挖\<主题>·速查-<id8>.md` 与草稿 `data\feishu_drafts\draft_<id8>.md`；模型判定无可提炼内容记「已跳过」并附原因；调用 / 校验失败记「提炼失败」，下次重试，不覆盖已有速查稿。
+提炼链路（`processor\quicknote.py`）：选 `deep_state=已转写`、`quick_state` 非已提炼/已跳过、且尚无速查稿的条目 → 读逐字稿去时间戳 → 调 OpenAI 兼容接口按锁定规范输出结构化 JSON → 先做结构归一化兜底（表格缺表头按列数补 `列1/列2…`、短行补空单元格、空表摘除）→ 再校验（小节 1–5、上手顺序 3–5、表格行列对齐）→ 通过则落 `vault\已深挖\<主题>·速查-<id8>.md` 与草稿 `data\feishu_drafts\draft_<id8>.md`；模型判定无可提炼内容记「已跳过」并附原因；调用 / 校验失败记「提炼失败」，下次重试，不覆盖已有速查稿。
 
 推送链路（`processor\feishu.py --quick`）：选 `quick_state=已提炼`、无飞书映射、草稿存在的条目 → tenant 自建应用身份上传 Markdown → 导入为 docx → 挂到知识库 `parent_wiki_token` → 回写 `feishu_doc_token / feishu_node_token / feishu_synced_at`。飞书稿不带封面插图；本地速查稿保留 `![[<id8>.webp]]` 封面引用。
 

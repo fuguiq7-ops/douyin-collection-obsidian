@@ -60,7 +60,7 @@ SYSTEM_PROMPT = """你是知识速查稿整理助手。把视频逐字稿提炼�
 ## 硬性要求
 - sections 3–5 个；steps 3–5 条。
 - 清单、对照、流程类内容必须放进 table，不要写成大段 bullet。
-- table 的 rows 每一行单元格数量与 headers 一致。
+- table 的 headers 必须填写与 rows 同列的表头，禁止省略或留空数组；rows 每一行单元格数量与 headers 一致。
 - 没有 table 的小节用 bullets；bullets 与 table 可同时存在。
 """
 
@@ -118,6 +118,35 @@ def parse_model_json(content: str) -> dict:
     if fence:
         text = fence.group(1).strip()
     return json.loads(text)
+
+
+def normalize(page: dict) -> dict:
+    """结构兜底：补全模型偶发遗漏的表头、对齐行列，尽量不丢内容。"""
+    if not isinstance(page, dict) or page.get("skip"):
+        return page
+    for sec in page.get("sections") or []:
+        if not isinstance(sec, dict):
+            continue
+        table = sec.get("table")
+        if not table:
+            continue
+        if not isinstance(table, dict):
+            table = {}
+            sec["table"] = table
+        headers = list(table.get("headers") or [])
+        rows = []
+        for r in table.get("rows") or []:
+            rows.append(list(r) if isinstance(r, list) else [r])
+        ncols = max([len(headers)] + [len(r) for r in rows] + [0])
+        if ncols <= 0:
+            sec.pop("table", None)
+            continue
+        if len(headers) < ncols:
+            headers += [f"列{i + 1}" for i in range(len(headers), ncols)]
+        rows = [r + [""] * (ncols - len(r)) for r in rows]
+        table["headers"] = headers
+        table["rows"] = rows
+    return page
 
 
 def validate(page: dict) -> str:
@@ -346,6 +375,7 @@ def main(argv=None):
                 # limit <= 0 表示不截断：整篇逐字稿原样送入
                 payload = transcript if limit <= 0 else transcript[:limit]
                 candidate = call_llm(qn, meta_text, payload)
+                candidate = normalize(candidate)
                 err = validate(candidate)
                 if err:
                     raise ValueError(err)
