@@ -136,6 +136,60 @@ def note_dir_for(item, vault):
     return Path(vault) / (TRANSCRIBED_DIR if (item.get("deep_state") or "") == "已转写" else NOTE_DIR)
 
 
+# 流水线自有目录，不参与「外部笔记」扫描
+RESERVED_DIRS = {NOTE_DIR, TRANSCRIBED_DIR, "分类", "attachments", ".obsidian", ".trash"}
+AUTO_MARK = "由脚本自动生成"
+
+
+def _note_title(p):
+    """外部笔记标题：优先 frontmatter 的「标题」，否则用文件名。"""
+    try:
+        text = p.read_text(encoding="utf-8")
+        fm = common.parse_frontmatter(text)[0] or {}
+        title = str(fm.get("标题") or fm.get("title") or "").strip()
+        if title:
+            return title
+    except Exception:
+        pass
+    return p.stem
+
+
+def scan_external_notes(vault):
+    """收集流水线之外的笔记，按文件夹名归为分类。
+
+    覆盖两类位置：vault 根目录下除保留目录以外的文件夹（如 `GEO运营/`），
+    以及 `分类/` 下的子文件夹（手动归档进分类的笔记）。
+    返回 {分类名: [Path, ...]}。
+    """
+    vault = Path(vault)
+    groups = {}
+    if not vault.exists():
+        return groups
+    for d in sorted(vault.iterdir()):
+        if not d.is_dir():
+            continue
+        if d.name == "分类":
+            for sub in sorted(d.iterdir()):
+                if sub.is_dir():
+                    groups.setdefault(sub.name, []).extend(sorted(sub.rglob("*.md")))
+            continue
+        if d.name in RESERVED_DIRS:
+            continue
+        groups.setdefault(d.name, []).extend(sorted(d.rglob("*.md")))
+    return groups
+
+
+def _external_line(p, vault):
+    rel = p.relative_to(vault).as_posix()
+    try:
+        import datetime
+        mtime = datetime.date.fromtimestamp(p.stat().st_mtime).isoformat()
+    except Exception:
+        mtime = ""
+    tail = f" — {mtime}" if mtime else ""
+    return f"- [[{p.stem}|{_note_title(p)}]]{tail}　`{rel}`"
+
+
 def write_note(item, cfg, transcript_text=None):
     vault = Path(cfg["vault_dir"])
     # 速查稿保护：已速查化的笔记不被自动重建、迁移或覆盖，原样沿用
@@ -232,20 +286,44 @@ def write_indexes(items, cfg, rules):
     for item in items:
         by_cat.setdefault(item.get("category") or "未分类", []).append(item)
 
+    # 外部笔记（非抖音流水线产出）：按所在文件夹名归入同名分类，与 DB 分类合并进同一份索引
+    external = scan_external_notes(vault)
+    for name in external:
+        by_cat.setdefault(name, [])
+
     cat_dir = vault / "分类"
+    cat_dir.mkdir(parents=True, exist_ok=True)
     generated = set()
     for name, lst in sorted(by_cat.items()):
         lst.sort(key=lambda x: (x.get("first_seen_at") or "", x.get("aweme_id") or ""), reverse=True)
-        lines = [f"# {name}", "", f"> 共 {len(lst)} 条 · 由脚本自动生成", ""]
-        lines += [_index_line(it) for it in lst]
+        ext = external.get(name) or []
+        if not lst and not ext:
+            continue
+        total = len(lst) + len(ext)
+        lines = [f"# {name}", "", f"> 共 {total} 条 · 由脚本自动生成", ""]
+        if lst:
+            if ext:
+                lines += ["## 抖音条目", ""]
+            lines += [_index_line(it) for it in lst]
+            lines.append("")
+        if ext:
+            lines += ["## 外部笔记（手动或其他模型添加，按文件夹名归入本分类）", ""]
+            lines += [_external_line(p, vault) for p in ext]
+            lines.append("")
         fname = f"{common.sanitize_filename(name, 40)}.md"
         generated.add(fname)
         if common.write_text_if_changed(cat_dir / fname, "\n".join(lines) + "\n"):
             written += 1
-    if cat_dir.exists():
-        for old in cat_dir.glob("*.md"):
-            if old.name not in generated:
-                old.unlink()
+    # 只清理脚本自己生成过的索引；手动维护（无自动标记）的文件保留
+    for old in cat_dir.glob("*.md"):
+        if old.name in generated:
+            continue
+        try:
+            head = old.read_text(encoding="utf-8")[:300]
+        except Exception:
+            continue
+        if AUTO_MARK in head:
+            old.unlink()
 
     uncat = by_cat.get("未分类", [])
     lines = ["# 未分类", "", f"> 共 {len(uncat)} 条 · 由脚本自动生成", ""]
@@ -274,18 +352,21 @@ def write_indexes(items, cfg, rules):
         source_count[it.get("source") or "（空）"] = source_count.get(it.get("source") or "（空）", 0) + 1
     starred = sum(1 for it in items if it.get("starred"))
     transcribed = sum(1 for it in items if it.get("deep_state") == "已转写")
+    ext_total = sum(len(v) for v in external.values())
     stat = [
         "# 统计",
         "",
         f"- 总条目：{len(items)}",
         f"- 已标星（深挖）：{starred}",
         f"- 已转写：{transcribed}",
+        f"- 外部笔记：{ext_total} 篇 / {len(external)} 个分类",
         "",
         "## 按分类",
         "",
     ]
-    for name, count in sorted(by_cat.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-        stat.append(f"- {name}：{len(count)}")
+    counts = {name: len(lst) + len(external.get(name) or []) for name, lst in by_cat.items()}
+    for name, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        stat.append(f"- {name}：{count}")
     stat += ["", "## 按状态", ""]
     for name, count in sorted(status_count.items(), key=lambda kv: (-kv[1], kv[0])):
         stat.append(f"- {name}：{count}")

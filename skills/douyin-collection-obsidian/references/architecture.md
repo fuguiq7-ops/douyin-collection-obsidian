@@ -12,8 +12,13 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
                               ▼
                     Obsidian vault\<库目录>\
                       ├─ 条目\YYYY-MM-DD 作者-标题-<id8>.md  （一条一笔记，按发布日期排序）
-                      ├─ 分类\*.md / 待看清单.md / 未分类.md / 统计.md / 开始这里.md
+                      ├─ 分类\<分类名>.md  （脚本生成的索引）＋ 分类\<分类名>\*.md（外部笔记实体，按文件夹名归类）
+                      ├─ 待看清单.md / 未分类.md / 统计.md / 开始这里.md
                       └─ attachments\covers\*.webp
+
+外部笔记归集：同步时扫 vault 根下非保留文件夹（条目/已深挖/分类/attachments 除外）与 分类\ 下的子文件夹，
+按文件夹名生成分类索引（与同名抖音条目合并进同一份 `分类\<名>.md`），计入 `统计.md`；
+只清理带「由脚本自动生成」标记的旧索引，手写索引不动。外部笔记不进深挖 / 提炼 / 推送。
 
 深挖链路：深挖.cmd → 直链下载原片（media_dir）→ ffmpeg 抽音频 → faster-whisper 转写
           → data\transcripts\<id8>.md → 回填笔记「逐字稿」区块
